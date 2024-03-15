@@ -1,0 +1,115 @@
+/* 
+ *Imos imitar o funcionamento simplificado dun toldo automatizado.
+ *
+ *O toldo debe iniciarse no estado de pregado, unha vez aceso. 
+ *O control do pregado/despregado faise usando 
+ *dous fins de carreira e o motor debe pasar por paro antes 
+ *de invertir o xiro.
+ *  
+ *  
+ * 
+ *
+ * Autor: Fran Fernández
+ * Data: Marzo de 2024
+ * Actualización:
+*/
+
+//Definición dos pins de E/S
+ #define PIN_PULSADOR  0
+ #define PIN_ACTIVAR_3_4 9
+ #define PIN_TOLDO_IN 10
+ #define PIN_TOLDO_OUT 12
+ #define PIN_FINAL_CARRERA_S 7
+ #define PIN_FINAL_CARRERA_B 8
+ #define ALIMENTACION 11
+ #define LDR A0
+ 
+#define VALOR_MINIMO_LDR 49
+#define VALOR_MAXIMO_LDR 969
+//Variables dos estados das referencias 
+int estado = 0;     // Variable para el estado del botón  
+bool run = false;   // Variable para el estado de ejecución del motor
+int fuerza = 0;
+
+//Variable para controlar os estados
+int estadoMotoresAnterior = LOW;
+int estadoMotores = 0;
+int toldoActivo = 0;
+int valorPinFinalCarreraS = 0;
+int valorPinFinalCarreraB = 0;
+int direccion = 0;
+int valorLDR = 0;
+int alimentacion = 255; //velocidad do motor
+int nivel = 0; //
+
+//Inicio dos pins
+void setup(){
+ pinMode(PIN_PULSADOR, INPUT);
+ pinMode(PIN_FINAL_CARRERA_S, INPUT);
+ pinMode(PIN_FINAL_CARRERA_B, INPUT);
+  
+ pinMode(PIN_TOLDO_IN, OUTPUT);
+ pinMode(PIN_TOLDO_OUT, OUTPUT);
+ pinMode(PIN_ACTIVAR_3_4, OUTPUT);
+ // analogico pinMode(ALIMENTACION, OUTPUT);
+  Serial.begin(9600);
+}
+
+void loop() {
+ //Leer o estado actual dos finais de carrera
+ valorPinFinalCarreraS = digitalRead(PIN_FINAL_CARRERA_S);
+ valorPinFinalCarreraB = digitalRead(PIN_FINAL_CARRERA_B);
+ valorLDR = analogRead(LDR);
+ nivel = map(valorLDR, 969, 49, 0, 5); // voltaxe disminue si a luz aumenta
+   if (nivel == 0) {
+        alimentacion = 5 * 255 / 100;
+      }
+      else {
+        alimentacion = 20 * nivel * 255 / 100;
+      }
+      analogWrite(ALIMENTACION, alimentacion); 
+      Serial.println(valorLDR); 
+  
+  while(digitalRead(PIN_PULSADOR)) {
+    estadoMotores = 1;
+  }
+ 
+  if (estadoMotores) { //Detección dunha pulsación
+    estadoMotores = 0; //Reseteo do valor do pulsador
+    
+    if(toldoActivo) {   
+       direccion = !direccion; //Cambio da dirección
+      
+      //Apaganse os motores
+       digitalWrite(PIN_TOLDO_OUT, LOW);
+       digitalWrite(PIN_TOLDO_IN, LOW);
+      
+       toldoActivo = 0; //Toldo sen movemento
+    }
+    else {
+      toldoActivo = 1; //Toldo en movemento
+      digitalWrite(PIN_ACTIVAR_3_4, HIGH);
+      
+      if (direccion) { //Se a direccion está a 1
+          digitalWrite(PIN_TOLDO_OUT, HIGH); //Activase o toldo sae
+          digitalWrite(PIN_TOLDO_IN, LOW);
+      } else { //Se está a 0
+          digitalWrite(PIN_TOLDO_IN, HIGH); //Activase o toldo recollese
+          digitalWrite(PIN_TOLDO_OUT, LOW);
+      }
+    }
+  }
+      if (valorPinFinalCarreraS) {
+          direccion = 0; //Cambiase a dirección
+          toldoActivo = 0;//Non se move a toldo
+          digitalWrite(PIN_TOLDO_OUT, LOW); //Apagase o motor de saída do toldo
+        }
+      if(valorPinFinalCarreraB) {
+          direccion = 1; //Cambiase a dirección
+          toldoActivo = 0;//Non se move a toldo
+          digitalWrite(PIN_TOLDO_IN, LOW);//Apagase o motor do recollida do toldo
+        }
+       delay (10);
+        
+       estadoMotoresAnterior = estadoMotores;
+}
